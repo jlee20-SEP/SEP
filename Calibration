@@ -1,1 +1,14 @@
+clear a
+a = arduino;                  %Arduino is startup
+z = readVoltage(a, 'A3');     % Read from analog pin A3.
+y = readVoltage(a, 'A4');     % Read from analog pin A4.   
+x = readVoltage(a, 'A5');     % Read from analog pin A5.
 
+writeDigitalPin(a, 'D13', 1)
+clear device ;
+disp(x);
+disp(y);
+disp(z);
+clear(x);
+clear(y);
+clear(z);
