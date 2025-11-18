@@ -1,3 +1,5 @@
+***This is code for testing if the relay can be controlled through a limit switch***
+
 clear a
 a = arduino("COM6","Uno");
 writeDigitalPin(a,'D3',1);
