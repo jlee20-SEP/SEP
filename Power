@@ -1,1 +1,14 @@
-
+clear a
+a = arduino("COM6","Uno");
+writeDigitalPin(a,'D3',1);
+for i = 1:100
+    z = readVoltage(a, 'A2');
+    disp(z);
+    pause(1);
+    if z < 2
+      writeDigitalPin(a,'D3',0);
+      pause(1);
+    elseif z > 2
+      writeDigitalPin(a,'D3',1);
+    end
+end
