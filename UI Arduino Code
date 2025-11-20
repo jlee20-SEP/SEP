@@ -1,0 +1,29 @@
+const int buttonPin = 9;       // physical button input
+String storedMessage = "";      // stores message from MATLAB
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(buttonPin, INPUT);   // using external pull-down resistor
+
+  // clear any leftover serial data
+  while (Serial.available() > 0) Serial.read();
+}
+
+void loop() {
+  // 1️⃣ Store incoming message from MATLAB
+  if (Serial.available()) {
+    storedMessage = Serial.readStringUntil('\n');
+    // Arduino does NOT respond yet
+  }
+
+  // 2️⃣ Send message only when button is pressed
+  if (storedMessage.length() > 0 && digitalRead(buttonPin) == HIGH) {
+    Serial.println("Arduino Response: " + storedMessage);
+
+    // Wait for button release to avoid multiple sends
+    while (digitalRead(buttonPin) == HIGH) delay(1);
+
+    // Clear stored message
+    storedMessage = "";
+  }
+}
