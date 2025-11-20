@@ -1,74 +1,66 @@
-classdef app1 < matlab.apps.AppBase
+classdef Test1ARD < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
-        UIFigure              matlab.ui.Figure
-        StatusLabel           matlab.ui.control.Label
-        LogListBox            matlab.ui.control.ListBox
-        LogListBoxLabel       matlab.ui.control.Label
-        DisconnectButton      matlab.ui.control.Button
-        InputTextArea         matlab.ui.control.TextArea
-        InputTextAreaLabel    matlab.ui.control.Label
-        ConnectArduinoButton  matlab.ui.control.Button
-        OutputTextArea        matlab.ui.control.TextArea
-        OutputTextAreaLabel   matlab.ui.control.Label
-        SendButton            matlab.ui.control.Button
+        UIFigure                    matlab.ui.Figure
+        OutputAreaTextArea          matlab.ui.control.TextArea
+        OutputAreaTextAreaLabel     matlab.ui.control.Label
+        SendButton                  matlab.ui.control.Button
+        MessageFieldEditField       matlab.ui.control.EditField
+        MessageFieldEditFieldLabel  matlab.ui.control.Label
+        ConnectButton               matlab.ui.control.Button
     end
 
     
     properties (Access = private)
-        a;        %Arudino object
-        timerObj; %Timer to read Arduino data
+        a % Arduino serial object
     end
     
+    methods (Access = private)
+        
+        function onArduinoData(app, src)
+    try
+        data = readline(src);
+        app.OutputAreaTextArea.Value = data;
+    catch
+        % ignore bad serial data
+   
+    end
+     end
+   end
     
     
 
     % Callbacks that handle component events
     methods (Access = private)
 
+        % Button pushed function: ConnectButton
+        function ConnectButtonPushed(app, event)
+         try
+                % ---------- Assign to the new private property ----------
+                app.a = serialport("COM9", 9600);   
+                configureTerminator(app.a,"LF");
+
+                % Asynchronous callback for incoming data
+                configureCallback(app.a, "terminator", @(src,evt) onArduinoData(app,src));
+
+                app.OutputAreaTextArea.Value = "Connected!";
+            catch ME
+                app.OutputAreaTextArea.Value = "Connection Failed: " + ME.message;
+         end 
+        end
+
         % Button pushed function: SendButton
         function SendButtonPushed(app, event)
-            % Read what is put in to text box
-            userMessage = app.InputTextArea.Value;
+  % ---------- Use correct component name ----------
+            msg = app.MessageFieldEditField.Value;   
 
-            % Make sure it is connected
-            if isempty(app.a)
-                app.StatusLabel.Text = "Not connected";
-                return;
+            try
+                writeline(app.a, msg);
+                app.OutputAreaTextArea.Value = "Sent: " + msg;
+            catch ME
+                app.OutputAreaTextArea.Value = "Send failed: " + ME.message;  % typo fixed
             end
-        end
-
-        % Button pushed function: ConnectArduinoButton
-        function ConnectArduinoButtonPushed(app, event)
-            try 
-                app.a = arduino("COM3","Uno"); %change com port
-                app.StatusLabel.Text = "Connected";
-
-
-                %timer for reading
-                app.timerObj = timer("ExecutionMode","fixedRate","Period",0.1,"TimerFcn", @(src,evt) app.readData());
-                start(app.timerObj);
-            catch err
-                app.StatusLabel.Text = "Connection Failed";
-            end
-        end
-
-        % Button pushed function: DisconnectButton
-        function DisconnectButtonPushed(app, event)
-             try
-        if ~isempty(app.timerObj) && isvalid(app.timerObj)
-            stop(app.timerObj);
-            delete(app.timerObj);
-        end
-            catch
-        % ignore cleanup errors
-            end
-
-    app.timerObj = [];
-    app.a = [];
-
-    app.StatusLabel.Text = "Disconnected";
         end
     end
 
@@ -83,58 +75,37 @@ classdef app1 < matlab.apps.AppBase
             app.UIFigure.Position = [100 100 640 480];
             app.UIFigure.Name = 'MATLAB App';
 
+            % Create ConnectButton
+            app.ConnectButton = uibutton(app.UIFigure, 'push');
+            app.ConnectButton.ButtonPushedFcn = createCallbackFcn(app, @ConnectButtonPushed, true);
+            app.ConnectButton.Position = [249 346 100 22];
+            app.ConnectButton.Text = 'Connect';
+
+            % Create MessageFieldEditFieldLabel
+            app.MessageFieldEditFieldLabel = uilabel(app.UIFigure);
+            app.MessageFieldEditFieldLabel.HorizontalAlignment = 'right';
+            app.MessageFieldEditFieldLabel.Position = [189 304 80 22];
+            app.MessageFieldEditFieldLabel.Text = 'MessageField';
+
+            % Create MessageFieldEditField
+            app.MessageFieldEditField = uieditfield(app.UIFigure, 'text');
+            app.MessageFieldEditField.Position = [284 304 100 22];
+
             % Create SendButton
             app.SendButton = uibutton(app.UIFigure, 'push');
             app.SendButton.ButtonPushedFcn = createCallbackFcn(app, @SendButtonPushed, true);
-            app.SendButton.Position = [472 342 100 22];
+            app.SendButton.Position = [249 258 100 22];
             app.SendButton.Text = 'Send';
 
-            % Create OutputTextAreaLabel
-            app.OutputTextAreaLabel = uilabel(app.UIFigure);
-            app.OutputTextAreaLabel.HorizontalAlignment = 'right';
-            app.OutputTextAreaLabel.Position = [344 277 88 22];
-            app.OutputTextAreaLabel.Text = 'OutputTextArea';
+            % Create OutputAreaTextAreaLabel
+            app.OutputAreaTextAreaLabel = uilabel(app.UIFigure);
+            app.OutputAreaTextAreaLabel.HorizontalAlignment = 'right';
+            app.OutputAreaTextAreaLabel.Position = [166 203 66 22];
+            app.OutputAreaTextAreaLabel.Text = 'OutputArea';
 
-            % Create OutputTextArea
-            app.OutputTextArea = uitextarea(app.UIFigure);
-            app.OutputTextArea.Position = [447 241 150 60];
-
-            % Create ConnectArduinoButton
-            app.ConnectArduinoButton = uibutton(app.UIFigure, 'push');
-            app.ConnectArduinoButton.ButtonPushedFcn = createCallbackFcn(app, @ConnectArduinoButtonPushed, true);
-            app.ConnectArduinoButton.Position = [470 371 103 22];
-            app.ConnectArduinoButton.Text = 'Connect Arduino';
-
-            % Create InputTextAreaLabel
-            app.InputTextAreaLabel = uilabel(app.UIFigure);
-            app.InputTextAreaLabel.HorizontalAlignment = 'right';
-            app.InputTextAreaLabel.Position = [353 439 79 22];
-            app.InputTextAreaLabel.Text = 'InputTextArea';
-
-            % Create InputTextArea
-            app.InputTextArea = uitextarea(app.UIFigure);
-            app.InputTextArea.Position = [447 403 150 60];
-
-            % Create DisconnectButton
-            app.DisconnectButton = uibutton(app.UIFigure, 'push');
-            app.DisconnectButton.ButtonPushedFcn = createCallbackFcn(app, @DisconnectButtonPushed, true);
-            app.DisconnectButton.Position = [470 311 100 22];
-            app.DisconnectButton.Text = 'Disconnect';
-
-            % Create LogListBoxLabel
-            app.LogListBoxLabel = uilabel(app.UIFigure);
-            app.LogListBoxLabel.HorizontalAlignment = 'right';
-            app.LogListBoxLabel.Position = [415 203 64 22];
-            app.LogListBoxLabel.Text = 'LogListBox';
-
-            % Create LogListBox
-            app.LogListBox = uilistbox(app.UIFigure);
-            app.LogListBox.Position = [494 153 100 74];
-
-            % Create StatusLabel
-            app.StatusLabel = uilabel(app.UIFigure);
-            app.StatusLabel.Position = [146 439 68 22];
-            app.StatusLabel.Text = {'StatusLabel'; ''};
+            % Create OutputAreaTextArea
+            app.OutputAreaTextArea = uitextarea(app.UIFigure);
+            app.OutputAreaTextArea.Position = [247 167 150 60];
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
@@ -145,7 +116,7 @@ classdef app1 < matlab.apps.AppBase
     methods (Access = public)
 
         % Construct app
-        function app = app1
+        function app = Test1ARD
 
             % Create UIFigure and components
             createComponents(app)
