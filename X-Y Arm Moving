@@ -1,1 +1,105 @@
+import zaber.motion.ascii.Connection;
+import zaber.motion.Units;
+
+connection = Connection.openSerialPort('COM3');                                %establishes connection
+try
+    connection.enableAlerts();
+
+    deviceList = connection.detectDevices();                                   %Finds devices
+    fprintf('Found %d devices.\n', deviceList.length);
+
+    MotorY = deviceList(2);                                                    %designates Motor Y
+
+    axisY = MotorY.getAxis(1);
+    if ~axisY.isHomed()
+        axisY.home();
+    end
+
+    MotorX = deviceList(1);                                                    %designates Motor X
+
+    axisX = MotorX.getAxis(1);
+    if ~axisX.isHomed()
+        axisX.home();
+    end
+    upPos = 0;
+    slidecenter = [75, 100];
+  
+    desiredspeed = input('Please input the desired motor speed on a scale from 1 to 6:')
+
+    axisX.getSettings().set('maxspeed', desiredspeed, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+    axisY.getSettings().set('maxspeed', desiredspeed, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+    speed = axisX.getSettings().get('maxspeed', Units.VELOCITY_MILLIMETRES_PER_SECOND);
+    speed2 = axisY.getSettings().get('maxspeed', Units.VELOCITY_MILLIMETRES_PER_SECOND);
+
+    axisX.moveAbsolute(slidecenter(1), Units.LENGTH_MILLIMETRES);
+    axisY.moveAbsolute(slidecenter(2), Units.LENGTH_MILLIMETRES);
+
+    axisX.waitUntilIdle();
+    axisY.waitUntilIdle();
+
+    X = [65, 95, 85, 55, 65];   % mm
+    Y = [90, 90, 110, 110, 90];  % mm
+
+    if length(X) ~= length(Y)
+        error('X and Y arrays must be the same length.');
+    end
+
+    for i = 1:length(X)
+        nextX = X(i);
+        nextY = Y(i);
+
+        currentX = axisX.getPosition(Units.LENGTH_MILLIMETRES);
+        currentY = axisY.getPosition(Units.LENGTH_MILLIMETRES);
+        dX = abs(nextX - currentX);
+        dY = abs(nextY - currentY);
+        tX = dX / speed;
+        tY = dY / speed2;
+
+        
+        travelTime = max(tX, tY);
+        if travelTime == 0
+            continue; 
+        end
+        vX = dX / travelTime;
+        vY = dY / travelTime;
+
+        fprintf('Moving to (X = %.1f, Y = %.1f)\n', nextX, nextY);
+
+        vX_safe = max(1, max(0, double(vX)));   % ensures >= 1 and numeric
+        vY_safe = max(1, max(0, double(vY)));
+        axisX.getSettings().set('maxspeed', vX_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+        axisY.getSettings().set('maxspeed', vY_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+
+        
+        axisX.moveAbsolute(nextX, Units.LENGTH_MILLIMETRES, false);
+        axisY.moveAbsolute(nextY, Units.LENGTH_MILLIMETRES, false);
+ 
+        axisX.waitUntilIdle();
+        axisY.waitUntilIdle();
+
+    end
+
+    pause(5)
+
+    axisX.getSettings().set('maxspeed', speed, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+    axisY.getSettings().set('maxspeed', speed2, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+
+    fprintf('Moving to Slide Center.')
+
+    axisX.moveAbsolute(slidecenter(1), Units.LENGTH_MILLIMETRES);
+    axisY.moveAbsolute(slidecenter(2), Units.LENGTH_MILLIMETRES);
+   
+    pause(5)
+
+    fprintf('Moving to Up Position.')
+
+    axisY.moveAbsolute(upPos, Units.LENGTH_MILLIMETRES);
+
+
+    connection.close();
+
+catch exception
+    connection.close();
+    rethrow(exception);
+end
 
