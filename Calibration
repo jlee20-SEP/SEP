@@ -12,3 +12,28 @@ disp(z);
 clear(x);
 clear(y);
 clear(z);
+
+
+
+%%NEW CODE (Attribute Dr. Davila)%%
+
+
+r=0;
+while r==0
+    clear a
+    a = arduino;                  %Arduino is startup
+    z = readVoltage(a, 'A2');     % Read from analog pin A3.
+    y = readVoltage(a, 'A4');     % Read from analog pin A4.   
+    x = readVoltage(a, 'A5');     % Read from analog pin A5.
+    
+    writeDigitalPin(a, 'D13', 1)
+    disp(x);
+    disp(y);
+    disp(z);
+end
+% a = arduino;                  %Arduino is startup
+% z = readVoltage(a, 'A2');     % Read from analog pin A3.
+% y = readVoltage(a, 'A4');     % Read from analog pin A4.   
+% x = readVoltage(a, 'A5');     % Read from analog pin A5.
+% 
+% writeDigitalPin(a, 'D13', 1)
