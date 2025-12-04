@@ -1,10 +1,11 @@
 % Andrew Tollefson
-% Dec 2
+% Dec 4
 % Zaber motor test page 4
 %__________________________________________________________________________
 %::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 clc;
 import zaber.motion.ascii.Connection;
+
 connection = Connection.openSerialPort('COM6');
 deviceList = connection.detectDevices();
 disp(deviceList);
@@ -13,63 +14,68 @@ axis = device.getAxis(1);
 %__________________________________________________________________________
 %""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
 % NOTE:
-% there are 2,304,000 microsteps per rotation >>> 0.00015625 degrees per
-% microstep >>> 6400 microsteps per degree
+%  there are 2,304,000 microsteps per rotation >>> 0.00015625 degrees per
+% microstep >>> 6400 microsteps per degree 
 %axis.home % sends the device home (absolute 0), corrects if overshoots
 %axis.moveRelative(dest_ms); % move x microsteps from current position
 %axis.moveAbsolute(); I think this moves to an absolute position, idrk
 %axis.waitUntilIdle(); % ensures that no momentum is left after previous command
 % TEST THE MOVEMENT
-to_deg = 0.00015625; % multiply microsteps by this to get degrees
+to_deg = 0.00015625; % multiply microsteps by this to get degrees 
 to_ms = 6400; % multiply degrees by this to get microsteps
-pos_ms0 = axis.getPosition();
-pos_deg0 = pos_ms0 * to_deg;
+pos_ms0 = axis.getPosition(); 
+pos_deg0 = pos_ms0 * to_deg; 
 dest_deg = input('Type a number in degrees to rotate to (or type "home"): ', 's');
 disp('___________________________________________________________')
+
 if strcmpi(dest_deg, 'home')
-axis.home();
-axis.waitUntilIdle();
-pos_msF = axis.getPosition();
+    axis.home();
+    axis.waitUntilIdle();
+    pos_msF = axis.getPosition();
 else
-deg = str2double(dest_deg); % convert string to number
-while deg >= 360
-deg = deg - 360;
+    deg = str2double(dest_deg);  % convert string to number
+    while deg >= 360
+        deg = deg - 360;
+    end
+    while deg <= -360
+        deg = deg + 360;
+    end
+    if isnan(deg)
+        disp('Invalid input');
+    else
+        dest_ms = deg * to_ms;
+        axis.moveRelative(dest_ms);
+        axis.waitUntilIdle();
+        pos_msF = axis.getPosition(); % gets the current position in microsteps
+    end
 end
-while deg <= -360
-deg = deg + 360;
-end
-if isnan(deg)
-disp('Invalid input');
-else
-dest_ms = deg * to_ms;
-axis.moveRelative(dest_ms);
-axis.waitUntilIdle();
-pos_msF = axis.getPosition(); % gets the current position in microsteps
-end
-end
+
 pos_msR = pos_msF - pos_ms0;
 disp(['Initial position (microsteps): ' num2str(pos_ms0)]);
 disp(['Initial position (degrees): ' num2str(pos_deg0)]);
 disp('___________________________________________________________');
 if pos_msR == 0
-pos_degF = 0;
-disp('Rotated microsteps: 0');
-disp('Rotated degrees: 0')
-disp('___________________________________________________________');
-disp(['Current Position (microsteps): ' num2str(pos_ms0)]);
-disp(['Current position (degrees): ' num2str(pos_deg0)]);
-else
-disp(['Rotated microsteps: ' num2str(pos_msR)]);
-pos_degF = pos_msF * to_deg;
-pos_degR = pos_msR * to_deg;
-disp(['Rotated degrees: ' num2str(pos_degR)]);
-disp('___________________________________________________________');
-disp(['Current Position (microsteps): ' num2str(pos_msF)]);
-disp(['Current position (degrees): ' num2str(pos_degF)]);
-end
+    pos_degF = 0;
+    disp('Rotated microsteps: 0'); 
+    disp('Rotated degrees: 0')
+    disp('___________________________________________________________');
+    disp(['Current Position (microsteps): ' num2str(pos_ms0)]);
+    disp(['Current position (degrees): ' num2str(pos_deg0)]);
+elseif deg < 0
+    disp(['Rotated microsteps: ' num2str(pos_msR)]);
+    pos_degF = pos_msF * to_deg;
+    pos_degR = pos_msR * to_deg; 
+    pos_degT = pos_degF + 360;
+    pos_msT = pos_msF + 2304000; 
+    disp(['Rotated degrees: ' num2str(pos_degR)]);
+    disp('___________________________________________________________');
+    disp(['Current Position (microsteps): ' num2str(pos_msF) ' or ' num2str(pos_msT)]);
+    disp(['Current position (degrees): ' num2str(pos_degF) ' or ' num2str(pos_degT)]);
+end 
 disp('===========================================================');
+axis.waitUntilIdle();
 disp("Move complete!");
-%____
-%====
-connection.close(); % VERY IMPORTANT 
-clear connection 
+%__________________________________________________________________________
+%==========================================================================
+connection.close();   % <--- IMPORTANT
+clear connection
