@@ -1,6 +1,6 @@
 % Andrew Tollefson
 % Dec 4
-% Zaber motor test page 4
+% Zaber motor test page 4 - position 
 %__________________________________________________________________________
 %::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 clc;
@@ -79,3 +79,63 @@ disp("Move complete!");
 %==========================================================================
 connection.close();   % <--- IMPORTANT
 clear connection
+
+
+
+
+% Andrew Tollefson
+% Dec 4
+% Zaber motor test page 5 - speed
+%__________________________________________________________________________
+%::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+clc;
+import zaber.motion.ascii.Connection;
+
+connection = Connection.openSerialPort('COM6');
+deviceList = connection.detectDevices();
+disp(deviceList);
+device = connection.getDevice(3);
+axis = device.getAxis(1);
+%__________________________________________________________________________
+%""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+to_deg = 0.00015625; % multiply microsteps by this to get degrees 
+to_ms = 6400; % multiply degrees by this to get microsteps
+pos_ms0 = axis.getPosition(); 
+pos_deg0 = pos_ms0 * to_deg; 
+disp(['Initial position (microsteps): ' num2str(pos_ms0)]);
+disp(['Initial position (degrees): ' num2str(pos_deg0)]);
+disp('___________________________________________________________');
+
+axis.home();
+
+% SET A ROTATION SPEED
+% (microsteps/second)
+% Positive = CW, Negative = CCW
+cw_speed = 5000;   % adjust as needed
+
+disp("Starting clockwise rotation...");
+axis.moveVelocity(cw_speed);  % starts continuous motion
+
+input('Press ENTER to stop rotation...');
+
+axis.stop();                 % stop motion
+axis.waitUntilIdle();
+disp("Stopped!"); 
+
+pos_msF = axis.getPosition(); % gets the current position in microsteps
+pos_msR = pos_msF - pos_ms0;
+pos_degF = pos_msF * to_deg;
+pos_degR = pos_msR * to_deg; 
+pos_degT = pos_degF + 360;
+pos_msT = pos_msF + 2304000;
+disp(['Rotated microsteps: ' num2str(pos_msR)]);
+disp(['Rotated degrees: ' num2str(pos_degR)]);
+disp('___________________________________________________________');
+disp(['Current Position (microsteps): ' num2str(pos_msF) ' or ' num2str(pos_msT)]);
+disp(['Current position (degrees): ' num2str(pos_degF) ' or ' num2str(pos_degT)]);
+
+%__________________________________________________________________________
+%==========================================================================
+connection.close();   % <--- IMPORTANT
+clear connection
+disp('Connection Clear and Closed')
