@@ -69,3 +69,7 @@ disp(['Current position (degrees): ' num2str(pos_degF)]);
 end
 disp('===========================================================');
 disp("Move complete!");
+%____
+%====
+connection.close(); % VERY IMPORTANT 
+clear connection 
