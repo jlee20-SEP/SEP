@@ -37,3 +37,20 @@ end
 % x = readVoltage(a, 'A5');     % Read from analog pin A5.
 % 
 % writeDigitalPin(a, 'D13', 1)
+
+
+%%NEW CODE FOR PHOTORESISTOR%%
+
+a = arduino('COM3', 'Uno');
+disp('Reading Voltages from A5');
+try
+    while true
+        voltage = readVoltage(a,'A5');
+        fprintf('Voltage: %.2f'V\n', voltage);
+        pause(1);
+    end
+catch ME
+    disp('Voltage reading stopped.');
+    delete(a);
+    rethrow(ME);
+end
