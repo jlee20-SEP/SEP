@@ -46,7 +46,7 @@ disp('Reading Voltages from A5');
 try
     while true
         voltage = readVoltage(a,'A5');
-        fprintf('Voltage: %.2f'V\n', voltage);
+        fprintf('Voltage: %.2f V\n', voltage);
         pause(1);
     end
 catch ME
