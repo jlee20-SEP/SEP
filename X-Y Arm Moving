@@ -1,7 +1,7 @@
 import zaber.motion.ascii.Connection;
 import zaber.motion.Units;
 
-connection = Connection.openSerialPort('COM3');                                %establishes connection
+connection = Connection.openSerialPort('COM4');                                %establishes connection
 try
     connection.enableAlerts();
 
@@ -21,39 +21,50 @@ try
     if ~axisX.isHomed()
         axisX.home();
     end
-    upPos = 0;
-    slidecenter = [75, 100];
+    upPos = 0;                                                                %Presets the up position for the Y motor
+    slidecenter = [75, 100];                                                  %Presets the slide center position for etching
+    GAPSPEED = 10;                                                            %sets the base speed
   
-    desiredspeed = input('Please input the desired motor speed on a scale from 1 to 6:')
+    desiredspeed = 0.50;                                                      %Sets the speed for etching between points
 
-    axisX.getSettings().set('maxspeed', desiredspeed, Units.VELOCITY_MILLIMETRES_PER_SECOND);
-    axisY.getSettings().set('maxspeed', desiredspeed, Units.VELOCITY_MILLIMETRES_PER_SECOND);
-    speed = axisX.getSettings().get('maxspeed', Units.VELOCITY_MILLIMETRES_PER_SECOND);
-    speed2 = axisY.getSettings().get('maxspeed', Units.VELOCITY_MILLIMETRES_PER_SECOND);
+    axisX.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);         %sets the speed for the motors
+    axisY.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
 
-    axisX.moveAbsolute(slidecenter(1), Units.LENGTH_MILLIMETRES);
+    axisX.moveAbsolute(slidecenter(1), Units.LENGTH_MILLIMETRES);             %Moves the motors to the center position
     axisY.moveAbsolute(slidecenter(2), Units.LENGTH_MILLIMETRES);
 
-    axisX.waitUntilIdle();
+    axisX.waitUntilIdle();                                                    %Waits until the motors are done moving to continue
     axisY.waitUntilIdle();
 
-    X = [65, 95, 85, 55, 65];   % mm
-    Y = [90, 90, 110, 110, 90];  % mm
+    %X =  This is where the x coordinates would go
+    %Y =  This is where the y coordinates would go
+    
+    MOTORX = zeros(size(X));          %Coordinate conversion
+    MOTORY = zeros(size(Y));
 
-    if length(X) ~= length(Y)
+    % This loop transforms the coordinates so the laser moves to the
+    % desired coordinates, and still remains stationary. 
+    for i = 1:length(X)
+        MOTORX(i) = slidecenter(1) - X(i);   % X axis: grid moves opposite laser
+        MOTORY(i) = slidecenter(2) - Y(i);   % Y axis: inverted physical setup
+    end
+
+    Start = input('Please type "1" to begin etch:');            %Starts the etch
+
+    if length(MOTORX) ~= length(MOTORY)                         %Ensures the coordinate arrays are the same lenth
         error('X and Y arrays must be the same length.');
     end
 
-    for i = 1:length(X)
-        nextX = X(i);
-        nextY = Y(i);
-
+    for i = 1:length(MOTORX)                                       %This is the algorithm that moves the motor between each coordinate
+        nextX = MOTORX(i);
+        nextY = MOTORY(i);
+        
         currentX = axisX.getPosition(Units.LENGTH_MILLIMETRES);
         currentY = axisY.getPosition(Units.LENGTH_MILLIMETRES);
         dX = abs(nextX - currentX);
         dY = abs(nextY - currentY);
-        tX = dX / speed;
-        tY = dY / speed2;
+        tX = dX /desiredspeed;
+        tY = dY /desiredspeed;
 
         
         travelTime = max(tX, tY);
@@ -64,29 +75,37 @@ try
         vY = dY / travelTime;
 
         fprintf('Moving to (X = %.1f, Y = %.1f)\n', nextX, nextY);
-
-        vX_safe = max(1, max(0, double(vX)));   % ensures >= 1 and numeric
-        vY_safe = max(1, max(0, double(vY)));
-        axisX.getSettings().set('maxspeed', vX_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
-        axisY.getSettings().set('maxspeed', vY_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
-
+        if dX>0.50                                                          %This sets the speed to gapspeed and turns the laser off.
+            %Call LaserOff();
+            axisX.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+            axisY.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+        elseif dY>0.50                                                       %This sets the speed to gapspeed and turns the laser off.
+            %Call LaserOff();
+            axisX.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+            axisY.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+        else
+            %Call LaserOn();
+            vX_safe = max(1, max(0, double(vX)));   % ensures >= 1 and numeric
+            vY_safe = max(1, max(0, double(vY)));
+            axisX.getSettings().set('maxspeed', vX_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+            axisY.getSettings().set('maxspeed', vY_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+        end
         
         axisX.moveAbsolute(nextX, Units.LENGTH_MILLIMETRES, false);
         axisY.moveAbsolute(nextY, Units.LENGTH_MILLIMETRES, false);
  
         axisX.waitUntilIdle();
         axisY.waitUntilIdle();
-
     end
 
     pause(5)
 
-    axisX.getSettings().set('maxspeed', speed, Units.VELOCITY_MILLIMETRES_PER_SECOND);
-    axisY.getSettings().set('maxspeed', speed2, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+    axisX.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);            
+    axisY.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
 
     fprintf('Moving to Slide Center.')
 
-    axisX.moveAbsolute(slidecenter(1), Units.LENGTH_MILLIMETRES);
+    axisX.moveAbsolute(slidecenter(1), Units.LENGTH_MILLIMETRES);                    %This sends the motors back to the center position
     axisY.moveAbsolute(slidecenter(2), Units.LENGTH_MILLIMETRES);
    
     pause(5)
@@ -96,10 +115,8 @@ try
     axisY.moveAbsolute(upPos, Units.LENGTH_MILLIMETRES);
 
 
-    connection.close();
-
+    connection.close();                                   %This closes the connection
 catch exception
     connection.close();
     rethrow(exception);
 end
-
