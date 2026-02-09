@@ -41,13 +41,35 @@ end
 
 %%NEW CODE FOR PHOTORESISTOR%%
 
-a = arduino('COM3', 'Uno');
+%%NEW CODE FOR PHOTORESISTOR%%
+clear a
+a = arduino('COM8', 'Uno');
 disp('Reading Voltages from A5');
 try
     while true
         voltage = readVoltage(a,'A5');
         fprintf('Voltage: %.2f V\n', voltage);
-        pause(1);
+        pause(0.5);
+        voltage2 = readVoltage(a,'A4');
+        if voltage2 > 2
+            fprintf('Move laser Left, too far right');
+        end
+        pause(0.5);
+        voltage3 = readVoltage(a,'A3');
+        if voltage3 > 2
+            fprintf('Move laser right, too far left');
+        end
+        pause(0.5);
+        voltage4 = readVoltage(a,'A2');
+        if voltage4 > 2
+            fprintf('Move Laser Up, too far down');
+        end
+        pause(0.5);
+        voltage5 = readVoltage(a,'A1');
+        if voltage5 > 2
+            fprintf('Move Laser Down, too far up');
+        end
+        pause(0.5);
     end
 catch ME
     disp('Voltage reading stopped.');
