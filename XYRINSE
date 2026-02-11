@@ -1,0 +1,20 @@
+clear a
+clear s
+
+a = arduino("COM5", "Uno", "Libraries", "Servo");
+s = servo(a, "D9", "MinPulseDuration", 1e-3, "MaxPulseDuration", 2e-3);
+
+x = 1;      % pause time
+startPos = 0; % original position
+endPos   = 1; % opposite extreme
+writePosition(s, startPos);
+pause(x);
+for i = 1:5
+    writePosition(s, endPos);
+    pause(x);
+
+    writePosition(s, startPos);
+    pause(x);
+end
+
+writePosition(s, startPos);
