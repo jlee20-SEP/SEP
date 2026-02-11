@@ -69,7 +69,8 @@ try
     17.522, 18.029, 18.536, 19.044, 19.551, 20.059, 20.566, 21.073, 21.581, 22.088,...
     22.596, 23.103, 23.610, 24.118, 24.625, 25.133, 25.640, 26.147, 26.655, 27.162,...
     27.670, 28.177, 28.684, 29.192, 29.699, 30.207, 30.714, 31.222, 31.729, 32.236,...
-    32.744, 33.251, 33.759, 34.266, 34.773, 35.281, 35.788, 36.296, 36.803, 37.310,...
+    32.744, 33.251, 33.759, 34.266, 34.773, 35.281, 35.788, 36.296,
+    36.803, 37.310,...
     37.818, 38.325, 38.833, 39.340, 39.847, 40.355, 40.862, 41.370, 41.877, 42.384,...
     42.454, 42.525, 42.595, 42.665, 42.735, 42.805, 42.875, 42.945, 43.015, 43.085,...
     43.155, 43.225, 43.295, 43.365, 43.435, 43.505, 43.575, 43.645, 43.715, 43.785,...
@@ -86,8 +87,8 @@ try
     % This  transforms the coordinates so the laser moves to the
     % desired coordinates, and still remains stationary. 
    
-        MOTORX = slidecenter(1) - X;   % X axis: grid moves opposite laser
-        MOTORY = slidecenter(2) - Y;   % Y axis: grid moves opposite laser
+        MOTORX = 90 - X;   % X axis: grid moves opposite laser
+        MOTORY = 125 - Y;   % Y axis: grid moves opposite laser
 
 %%==========================================This is the section for the actual motion of the lasers=========================================================================
 
@@ -101,6 +102,12 @@ try
         nextX = MOTORX(i);
         nextY = MOTORY(i);
         
+        if nextX>100
+            break
+        end
+        if nextX<50
+            break
+        end
         currentX = axisX.getPosition(Units.LENGTH_MILLIMETRES);
         currentY = axisY.getPosition(Units.LENGTH_MILLIMETRES);
         dX = abs(nextX - currentX);
@@ -116,7 +123,7 @@ try
         vY = dY / travelTime;
 
         fprintf('Moving to (X = %.1f, Y = %.1f)\n', nextX, nextY);
-        if dX>resolution || dY>resolution                                                      %This sets the speed to gapspeed and turns the laser off.
+        if dX>resolution                                                       %This sets the speed to gapspeed and turns the laser off.
             %Call LaserOff();
             axisX.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
             axisY.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
@@ -127,6 +134,7 @@ try
             axisX.getSettings().set('maxspeed', vX_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
             axisY.getSettings().set('maxspeed', vY_safe, Units.VELOCITY_MILLIMETRES_PER_SECOND);
         end
+        
         
         axisX.moveAbsolute(nextX, Units.LENGTH_MILLIMETRES, false);
         axisY.moveAbsolute(nextY, Units.LENGTH_MILLIMETRES, false);
