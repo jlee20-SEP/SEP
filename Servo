@@ -1,1 +1,15 @@
 
+clear a 
+clear s
+a = arduino("COM5", 'Mega2560', 'Libraries', 'Servo');
+s = servo(a, 'D5', 'MinPulseDuration', 1e-3, 'MaxPulseDuration', 2e-3);
+
+ArrayGrad = [];
+ArrayFixed = [];
+if GF = 1;
+    grad1 = grad * 10;
+    gradFinal = ArrayGrad(grad1);
+    writePostion(s, gradFinal);
+elseif GF = 0
+    Fixed1 = ArrayFixed(Fixed);
+    writePostion(s, Fixed);
