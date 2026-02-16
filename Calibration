@@ -44,6 +44,9 @@ end
 %%NEW CODE FOR PHOTORESISTOR%%
 clear a
 a = arduino('COM8', 'Uno');
+max_iterations = 10;
+break_cycle = 5;
+
 disp('Reading Voltages from A5');
 try
     while true
@@ -51,22 +54,33 @@ try
         fprintf('Voltage: %.2f V\n', voltage);
         pause(0.5);
         voltage2 = readVoltage(a,'A4');
-        if voltage2 > 2
+        if voltage > 3
+            for i = 1:max_iterations
+                pause(1);
+
+            fprintf('The laser is centered');
+            fprintf('Voltage: %.2f V\n', voltage);
+            
+            end
+            break
+            
+        end
+        if voltage2 > 3
             fprintf('Move laser Left, too far right');
         end
         pause(0.5);
         voltage3 = readVoltage(a,'A3');
-        if voltage3 > 2
+        if voltage3 > 3
             fprintf('Move laser right, too far left');
         end
         pause(0.5);
         voltage4 = readVoltage(a,'A2');
-        if voltage4 > 2
+        if voltage4 > 3
             fprintf('Move Laser Up, too far down');
         end
         pause(0.5);
         voltage5 = readVoltage(a,'A1');
-        if voltage5 > 2
+        if voltage5 > 3
             fprintf('Move Laser Down, too far up');
         end
         pause(0.5);
