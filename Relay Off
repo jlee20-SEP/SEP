@@ -1,1 +1,4 @@
+clear a 
+a = arduino("COM5", 'Mega2560', 'Libraries', 'Servo');
 
+writeDigitalPin(a, 'D6', 1);
