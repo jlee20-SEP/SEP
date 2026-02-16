@@ -1,66 +1,529 @@
-classdef Test1ARD < matlab.apps.AppBase
+classdef Guione < matlab.apps.AppBase
 
     % Properties that correspond to app components
     properties (Access = public)
-        UIFigure                    matlab.ui.Figure
-        OutputAreaTextArea          matlab.ui.control.TextArea
-        OutputAreaTextAreaLabel     matlab.ui.control.Label
-        SendButton                  matlab.ui.control.Button
-        MessageFieldEditField       matlab.ui.control.EditField
-        MessageFieldEditFieldLabel  matlab.ui.control.Label
-        ConnectButton               matlab.ui.control.Button
+        UIFigure                      matlab.ui.Figure
+        FilterchoosesSwitch           matlab.ui.control.Switch
+        FilterchoosesSwitchLabel      matlab.ui.control.Label
+        FiltersGradientPanel          matlab.ui.container.Panel
+        GradientFilterEditField       matlab.ui.control.NumericEditField
+        GradientFilterEditFieldLabel  matlab.ui.control.Label
+        FiltersfixedPanel             matlab.ui.container.Panel
+        FixedchoosesButtonGroup       matlab.ui.container.ButtonGroup
+        Button_4                      matlab.ui.control.RadioButton
+        Button_3                      matlab.ui.control.RadioButton
+        Button_2                      matlab.ui.control.RadioButton
+        Button                        matlab.ui.control.RadioButton
+        ClabrationandstartPanel       matlab.ui.container.Panel
+        TestswitchSwitch              matlab.ui.control.Switch
+        TestswitchSwitchLabel         matlab.ui.control.Label
+        StartButton                   matlab.ui.control.Button
+        CalabrationLamp               matlab.ui.control.Lamp
+        CalabrationLampLabel          matlab.ui.control.Label
+        LazySuasanPanel               matlab.ui.container.Panel
+        NumberofBeakersSpinner        matlab.ui.control.Spinner
+        NumberofBeakersSpinnerLabel   matlab.ui.control.Label
+        UIAxes3                       matlab.ui.control.UIAxes
+        SourceSwitch                  matlab.ui.control.Switch
+        SourceSwitchLabel             matlab.ui.control.Label
+        XYManualInputPanel            matlab.ui.container.Panel
+        DrawMapButton                 matlab.ui.control.Button
+        UIAxes_2                      matlab.ui.control.UIAxes
+        XYinputimagePanel             matlab.ui.container.Panel
+        ImageinputButton              matlab.ui.control.Button
+        UIAxes                        matlab.ui.control.UIAxes
+    end
+
+
+    % Public properties that correspond to the Simulink model
+    properties (Access = public, Transient)
+        Simulation simulink.Simulation
     end
 
     
     properties (Access = private)
-        a % Arduino serial object
+        LastImageName = 'None'; 
+        hDrawing              % Custom property to hold the drawing object
+        BeakerStates = zeros(1, 8); % 0: Empty, 1: Water, 2: Chemical
+        SelectedFilterLevel = 1;    % Stores 1, 2, 3, or 4
+        FilterGradientValue = 0;    % Stores 0.0 to 1.0 (0% to 100%)
+        % Filter UI Components
+        FilterControlPanel           matlab.ui.container.Panel
+        FilterTypeSwitch             matlab.ui.control.Switch
+        FilterTypeLabel              matlab.ui.control.Label
+
+        % Discrete Selection (1-4)
+        DiscretePanel                matlab.ui.container.Panel
+        FilterButtonGroup            matlab.ui.container.ButtonGroup
+        Filter1Btn                   matlab.ui.control.RadioButton
+        Filter2Btn                   matlab.ui.control.RadioButton
+        Filter3Btn                   matlab.ui.control.RadioButton
+        Filter4Btn                   matlab.ui.control.RadioButton
+
+        % Gradient Selection (0-100%)
+        GradientPanel                matlab.ui.container.Panel
+        FilterSlider                 matlab.ui.control.Slider
+        FilterSliderLabel            matlab.ui.control.Label
+
+        CalibrateSwitch        matlab.ui.control.Switch
+        TestSwitch                matlab.ui.control.Switch
     end
-    
-    methods (Access = private)
-        
-        function onArduinoData(app, src)
-    try
-        data = readline(src);
-        app.OutputAreaTextArea.Value = data;
-    catch
-        % ignore bad serial data
-   
-    end
-     end
-   end
-    
     
 
     % Callbacks that handle component events
     methods (Access = private)
 
-        % Button pushed function: ConnectButton
-        function ConnectButtonPushed(app, event)
-         try
-                % ---------- Assign to the new private property ----------
-                app.a = serialport("COM9", 9600);   
-                configureTerminator(app.a,"LF");
+        % Code that executes after component creation
+        function startupFcn(app)
+    app.UIAxes3.Interactions = []; % Clear default pan/zoom interactions that might block clicks
+    app.UIAxes3.HitTest = 'on';    % Ensure the axes can be clicked       
+            % Prepare the axes for drawing
+    hold(app.UIAxes3, 'on');
+    
+    % Draw the circular plate outline
+    theta_plate = linspace(0, 2*pi, 100);
+    plot(app.UIAxes3, cos(theta_plate), sin(theta_plate), 'Color', [0.6 0.6 0.6], 'LineWidth', 2);
+    
+    % Define the 8 fixed positions
+    angles = linspace(0, 2*pi, 9); 
+    angles(end) = []; 
+    
+    for i = 1:8
+        % Position the "holes"
+        x = 0.75 * cos(angles(i));
+        y = 0.75 * sin(angles(i));
+        
+        % Create the clickable markers
+        scatter(app.UIAxes3, x, y, 800, 'filled', ...
+            'MarkerFaceColor', [0.94 0.94 0.94], ... 
+            'MarkerEdgeColor', [0.4 0.4 0.4], ...
+            'ButtonDownFcn', @(src, event) app.beakerClicked(i));
+        
+        % Add the number - Ensure it doesn't block clicks
+        text(app.UIAxes3, x, y, num2str(i), ...
+            'HorizontalAlignment', 'center', ...
+            'FontWeight', 'bold', ...
+            'HitTest', 'off', ...           
+            'PickableParts', 'none');      
+    end
+    
+    % Final styling to make it look like a wheel
+    axis(app.UIAxes3, 'equal');
+    app.UIAxes3.XLim = [-1.1 1.1];
+    app.UIAxes3.YLim = [-1.1 1.1];
+    app.UIAxes3.Visible = 'off';
+    hold(app.UIAxes3, 'off');
+   
+   % --- For the Image Input (UIAxes) ---
+    app.UIAxes.Position = [10, 10, 350, 240]; % Manually stretching the box (adjust these numbers)
+    app.UIAxes.XLim = [0 25];
+    app.UIAxes.YLim = [0 75];
+    app.UIAxes.DataAspectRatioMode = 'manual';
+    app.UIAxes.DataAspectRatio = [1 1 1]; % Keeps the drawing accurate
+    app.UIAxes.PlotBoxAspectRatioMode = 'auto'; % Allows it to expand
 
-                % Asynchronous callback for incoming data
-                configureCallback(app.a, "terminator", @(src,evt) onArduinoData(app,src));
+    % --- For the Manual Input (UIAxes_2) ---
+    app.UIAxes_2.Position = [10, 10, 350, 240]; 
+    app.UIAxes_2.XLim = [0 25];
+    app.UIAxes_2.YLim = [0 75];
+    app.UIAxes_2.DataAspectRatioMode = 'manual';
+    app.UIAxes_2.DataAspectRatio = [1 1 1];
+    app.UIAxes_2.PlotBoxAspectRatioMode = 'auto';
 
-                app.OutputAreaTextArea.Value = "Connected!";
-            catch ME
-                app.OutputAreaTextArea.Value = "Connection Failed: " + ME.message;
-         end 
+    % Force initial states at startup
+    app.CalabrationLamp.Color = [1 0 0]; % Red
+    app.StartButton.Enable = 'off';      % Locked
+  
+    
+  % Sync the lamp to the initial position of the test switch
+if isequal(app.TestswitchSwitch.Value, 'On')
+    app.CalabrationLamp.Color = [0 1 0]; % Green
+    app.StartButton.Enable = 'on';
+else
+    app.CalabrationLamp.Color = [1 0 0]; % Red
+    app.StartButton.Enable = 'off';
+end
+
         end
 
-        % Button pushed function: SendButton
-        function SendButtonPushed(app, event)
-  % ---------- Use correct component name ----------
-            msg = app.MessageFieldEditField.Value;   
+        % Button pushed function: ImageinputButton
+        function ImageinputButtonPushed(app, event)
+   %% 1. Load Image
+    [file, path] = uigetfile({'*.jpg;*.png;*.bmp;*.tif', 'All Image Files'});
+    if isequal(file, 0), return; end
+    app.LastImageName = file;
+    I = imread(fullfile(path, file));
+    
+    if ndims(I) == 3
+        gray_I = rgb2gray(I);
+    else
+        gray_I = I;
+    end
 
-            try
-                writeline(app.a, msg);
-                app.OutputAreaTextArea.Value = "Sent: " + msg;
-            catch ME
-                app.OutputAreaTextArea.Value = "Send failed: " + ME.message;  % typo fixed
+    %% 2. Physical Setup & Filling
+    slide_w = 25.0;     % mm
+    slide_h = 75.0;     % mm
+    resolution = 0.5;   % mm (The "grid" spacing for the fill)
+    img_scale = 0.8;    % Scale factor to fit within slide
+
+    % Create a binary mask and FILL the interior
+    level = graythresh(gray_I);
+    binary_mask = ~imbinarize(gray_I, level); 
+    filled_mask = imfill(binary_mask, 'holes'); 
+
+    % Resize the filled shape based on your scale factor
+    target_w_px = (slide_w / resolution) * img_scale;
+    target_h_px = (slide_h / resolution) * img_scale;
+    
+    img_aspect = size(filled_mask, 2) / size(filled_mask, 1);
+    if (target_w_px / target_h_px) > img_aspect
+        new_h = target_h_px;
+        new_w = new_h * img_aspect;
+    else
+        new_w = target_w_px;
+        new_h = new_w / img_aspect;
+    end
+    
+    % 'nearest' is vital here to keep the mask binary (0 or 1)
+    resized_mask = imresize(filled_mask, [round(new_h), round(new_w)], 'nearest');
+
+    %% 3. Scan & Centering (Top-to-Bottom, Left-to-Right)
+    [rows, cols] = size(resized_mask);
+    
+    % Calculate offsets to center the shape on the 25x75 slide
+    x_offset = (slide_w - (cols * resolution)) / 2;
+    y_offset = (slide_h - (rows * resolution)) / 2;
+
+    final_X = [];
+    final_Y = [];
+
+    % The nested loop order enforces the save sequence:
+    % Outer loop: Rows (Top to Bottom)
+    % Inner loop: Columns (Left to Right)
+    for r = 1:rows
+        for c = 1:cols
+            if resized_mask(r, c) == 1
+                final_X(end+1) = (c * resolution) + x_offset; 
+                final_Y(end+1) = (r * resolution) + y_offset;
             end
+        end
+    end
+
+    %% 4. SAVE DATA
+    fileID = fopen('EtchPath_500um.txt', 'w');
+    if fileID ~= -1
+        for i = 1:length(final_X)
+            % Saving as X [tab] Y
+            fprintf(fileID, '%.3f\t%.3f\n', final_X(i), final_Y(i));
+        end
+        fclose(fileID);
+    end
+
+    %% 5. Visualization on the GUI
+    cla(app.UIAxes);
+    % Using scatter to show the filled-in points clearly
+    scatter(app.UIAxes, final_X, final_Y, 4, 'filled', 'MarkerFaceColor', [0 0 0]);
+    
+    axis(app.UIAxes, 'equal'); 
+    app.UIAxes.XLim = [0 slide_w]; 
+    app.UIAxes.YLim = [0 slide_h];
+    app.UIAxes.YDir = 'reverse'; 
+    grid(app.UIAxes, 'on');
+    xlabel(app.UIAxes, 'X (mm)'); 
+    ylabel(app.UIAxes, 'Y (mm)');
+
+
+%% 6. Visualization on the GUI
+% Clear the axes before plotting new data
+cla(app.UIAxes);
+
+% Plot the coordinate map
+plot(app.UIAxes, final_X, final_Y, 'k-', 'LineWidth', 1.5); 
+
+% Set viewing parameters
+axis(app.UIAxes, 'equal'); 
+app.UIAxes.XLim = [0 slide_w]; 
+app.UIAxes.YLim = [0 slide_h];
+app.UIAxes.YDir = 'reverse'; % Standard for image coordinates
+grid(app.UIAxes, 'on');
+xlabel(app.UIAxes, 'X (mm)'); 
+ylabel(app.UIAxes, 'Y (mm)');
+
+  
+        end
+
+        % Button pushed function: DrawMapButton
+        function DrawMapButtonPushed(app, event)
+           % 1. Reset and Setup Axes
+            cla(app.UIAxes_2);
+            title(app.UIAxes_2, 'DRAWING: Press ENTER to finish and save.');
+            
+            app.UIAxes_2.XLim = [0 25];
+            app.UIAxes_2.YLim = [0 75];
+            app.UIAxes_2.YDir = 'reverse';
+            
+            % 2. Start Drawing Tool
+            app.hDrawing = drawpolyline(app.UIAxes_2, 'Color', 'r', 'LineWidth', 1.5);
+            
+            % 3. This line pauses the code until you press ENTER or Double-Click
+            wait(app.hDrawing);
+            
+            % 4. INTERPOLATE AND SAVE DATA
+            if isvalid(app.hDrawing)
+                pos = app.hDrawing.Position;
+                raw_X = pos(:, 1);
+                raw_Y = pos(:, 2);
+                
+                % Define the desired spacing (matching your image resolution)
+                spacing = 0.5; 
+                
+                % Create "filled-in" arrays
+                interp_X = [];
+                interp_Y = [];
+                
+                for i = 1:(length(raw_X) - 1)
+                    % Calculate distance between this point and the next
+                    dist = sqrt((raw_X(i+1)-raw_X(i))^2 + (raw_Y(i+1)-raw_Y(i))^2);
+                    num_pts = max(2, ceil(dist / spacing));
+                    
+                    % Generate points along the line segment
+                    seg_X = linspace(raw_X(i), raw_X(i+1), num_pts);
+                    seg_Y = linspace(raw_Y(i), raw_Y(i+1), num_pts);
+                    
+                    % Add to the list (avoiding duplicate end-points)
+                    if i > 1
+                        interp_X = [interp_X, seg_X(2:end)];
+                        interp_Y = [interp_Y, seg_Y(2:end)];
+                    else
+                        interp_X = [interp_X, seg_X];
+                        interp_Y = [interp_Y, seg_Y];
+                    end
+                end
+
+                % Save the high-density data
+                fileID = fopen('EtchPath_Manual.txt', 'w');
+                fprintf(fileID, '%.3f\n', interp_X);
+                fprintf(fileID, '\n'); 
+                fprintf(fileID, '%.3f\n', interp_Y);
+                fclose(fileID);
+                
+                % Plot the "Laser Path" points to confirm density
+                hold(app.UIAxes_2, 'on');
+                plot(app.UIAxes_2, interp_X, interp_Y, 'b.'); % Blue dots show individual laser points
+                hold(app.UIAxes_2, 'off');
+                
+                
+                
+              
+            end
+        end
+
+        % Value changed function: SourceSwitch
+        function SourceSwitchValueChanged(app, event)
+       source = app.SourceSwitch.Value; 
+            activeColor = [0.85, 1.0, 0.85]; % Soft Green
+            dimColor    = [0.96, 0.96, 0.96]; % Gray
+            
+            if strcmp(source, 'Image Input') 
+                app.XYinputimagePanel.BackgroundColor = activeColor;
+                app.XYManualInputPanel.BackgroundColor = dimColor;
+            else 
+                app.XYManualInputPanel.BackgroundColor = activeColor;
+                app.XYinputimagePanel.BackgroundColor = dimColor;
+            end
+            
+           
+          
+          
+        
+        end
+
+        % Callback function
+        function NumberofBeakersSpinnerValueChanging(app, event)
+         target = event.Value;
+            % Note: Ensure this Label name matches your App Designer component name
+            % app.IFTHESWITCHISNOTPUSHEDYETITWILLNOTSELECTLabel.Text = ...
+            %    ['Please select ' num2str(target) ' locations on the wheel.'];
+        end
+        % --- THE BEAKER CLICK LOGIC ---
+        function beakerClicked(app, index)
+            % 1. Setup
+            allMarkers = findobj(app.UIAxes3, 'Type', 'Scatter');
+            targetMarker = allMarkers(9 - index); 
+            limit = app.NumberofBeakersSpinner.Value;
+            
+            % 2. Count how many are currently NOT gray (Active)
+            % BeakerStates > 0 means it is either Water (1) or Chemical (2)
+            activeCount = sum(app.BeakerStates > 0);
+            
+            if ~isempty(targetMarker) && isvalid(targetMarker)
+                colors = [0.94, 0.94, 0.94;  % 0: Gray
+                          0.00, 0.45, 0.74;  % 1: Blue
+                          0.47, 0.67, 0.19]; % 2: Green
+
+                % 3. Check logic before changing state
+                currentState = app.BeakerStates(index);
+                
+                if currentState > 0
+                    % If it's already on, cycling is ALWAYS allowed 
+                    % (Blue -> Green, or Green -> Gray)
+                    app.BeakerStates(index) = mod(app.BeakerStates(index) + 1, 3);
+                elseif activeCount < limit
+                    % If it's currently Gray (0), only allow turning it on (to Blue) 
+                    % if we are under the spinner limit
+                    app.BeakerStates(index) = 1; 
+                else
+                    % Limit reached - maybe give a small hint to the user
+                    fprintf('Limit of %d beakers reached!\n', limit);
+                    return; 
+                end
+                
+                % 4. Update Visuals
+                newState = app.BeakerStates(index);
+                targetMarker.MarkerFaceColor = colors(newState + 1, :);
+            end
+        
+        end
+
+        % Value changed function: NumberofBeakersSpinner
+        function NumberofBeakersSpinnerValueChanged(app, event)
+       allMarkers = findobj(app.UIAxes3, 'Type', 'Scatter');
+            set(allMarkers, 'MarkerFaceColor', [0.94 0.94 0.94]);
+            app.BeakerStates = zeros(1, 8);
+        
+        end
+
+        % Button pushed function: StartButton
+        function StartButtonPushed(app, event)
+   
+    % 1. Calibration Safety Check
+    if app.CalabrationLamp.Color(2) == 0 
+        uialert(app.UIFigure, 'Please calibrate before starting.', 'Calibration Required');
+        return;
+    end
+
+    % 2. Open File Dialog
+    [file, path] = uiputfile('Process_Summary.txt', 'Save Full Process Report');
+    if isequal(file, 0), return; end 
+
+    % 3. Open File for Writing
+    fileID = fopen(fullfile(path, file), 'w');
+    if fileID == -1, return; end
+
+    % --- HEADER ---
+    fprintf(fileID, '==========================================\n');
+    fprintf(fileID, '       FULL PROCESS DATA REPORT           \n');
+    fprintf(fileID, '       Timestamp: %s                  \n', datestr(now));
+    fprintf(fileID, '==========================================\n\n');
+
+   % --- DRAWING TYPE & SOURCE ---
+    fprintf(fileID, '[DRAWING METADATA]\n');
+    currentSource = app.SourceSwitch.Value; 
+    fprintf(fileID, 'Input Method:   %s\n', currentSource);
+    
+    if strcmp(currentSource, 'Image Input')
+        coordFile = 'EtchPath_500um.txt';
+        % This line now grabs the file name you saved earlier
+        fprintf(fileID, 'Source File:    %s\n', app.LastImageName); 
+    else
+        coordFile = 'EtchPath_Manual.txt';
+        fprintf(fileID, 'Source File:    Manual Polyline Drawing\n');
+    end
+    fprintf(fileID, '\n');
+
+    % --- UI SETTINGS ---
+   if strcmp(app.FilterchoosesSwitch.Value, 'Fixed')
+    fVal = app.FixedchoosesButtonGroup.SelectedObject.Text;
+else
+    % Fixed name: GradientFilterEditField
+    fVal = [num2str(app.GradientFilterEditField.Value), '%%']; 
+end
+    fprintf(fileID, '[HARDWARE SETTINGS]\n');
+    fprintf(fileID, 'Filter Mode:    %s\n', app.FilterchoosesSwitch.Value);
+    fprintf(fileID, 'Filter Value:   %s\n', fVal);
+    fprintf(fileID, 'Beaker Limit:   %d\n\n', app.NumberofBeakersSpinner.Value);
+    % --- BEAKER POSITIONS ---
+    fprintf(fileID, '[BEAKER STATES]\n');
+    beakerNames = {'Empty', 'Water', 'Chemical'};
+    for i = 1:8
+        fprintf(fileID, 'Position %d:  %s\n', i, beakerNames{app.BeakerStates(i)+1});
+    end
+
+    % --- COORDINATE LIST (Separated Blocks) ---
+fprintf(fileID, '\n[X COORDINATES]\n');
+if exist(coordFile, 'file')
+    rawCoords = readmatrix(coordFile);
+    if ~isempty(rawCoords)
+        [rows, cols] = size(rawCoords);
+        
+        % Check if the file is 2 columns (Image) or 1 long column (Manual)
+        if cols == 2
+            % Case 1: X and Y are side-by-side in source, print all X first
+            for i = 1:rows
+                fprintf(fileID, '%.3f\n', rawCoords(i,1));
+            end
+            
+            fprintf(fileID, '\n[Y COORDINATES]\n');
+            for i = 1:rows
+                fprintf(fileID, '%.3f\n', rawCoords(i,2));
+            end
+        else
+            % Case 2: Data is stacked (from your DrawMap logic)
+            mid = rows/2;
+            % Print X block
+            for i = 1:mid
+                fprintf(fileID, '%.3f\n', rawCoords(i));
+            end
+            
+            fprintf(fileID, '\n[Y COORDINATES]\n');
+            % Print Y block
+            for i = (mid+1):rows
+                fprintf(fileID, '%.3f\n', rawCoords(i));
+            end
+        end
+    else
+        fprintf(fileID, '!! No coordinate data found.\n');
+    end
+else
+    fprintf(fileID, '!! Error: Source file missing.\n');
+end
+
+        end
+
+        % Value changed function: FilterchoosesSwitch
+        function FilterchoosesSwitchValueChanged(app, event)
+         mode = app.FilterchoosesSwitch.Value;
+    activeColor = [0.85, 1.0, 0.85]; % Soft Green
+    dimColor    = [0.96, 0.96, 0.96]; % Gray
+    
+    if strcmp(mode, 'Fixed')
+        app.FiltersfixedPanel.BackgroundColor = activeColor;
+        app.FiltersGradientPanel.BackgroundColor = dimColor;
+        app.FixedchoosesButtonGroup.Enable = 'on';
+        app.GradientFilterEditField.Enable = 'off'; % Corrected name
+    else
+        app.FiltersGradientPanel.BackgroundColor = activeColor;
+        app.FiltersfixedPanel.BackgroundColor = dimColor;
+        app.FixedchoosesButtonGroup.Enable = 'off';
+        app.GradientFilterEditField.Enable = 'on';  % Added this missing line
+    end
+        end
+
+        % Value changed function: TestswitchSwitch
+        function TestswitchSwitchValueChanged(app, event)
+
+    % This ensures the data exists the moment the switch moves
+    val = event.Value; 
+    
+    if strcmp(val, 'On') 
+        app.CalabrationLamp.Color = [0 1 0]; % Green
+        app.StartButton.Enable = 'on';       
+    else
+        app.CalabrationLamp.Color = [1 0 0]; % Red
+        app.StartButton.Enable = 'off';      
+    end
+
+
         end
     end
 
@@ -72,40 +535,183 @@ classdef Test1ARD < matlab.apps.AppBase
 
             % Create UIFigure and hide until all components are created
             app.UIFigure = uifigure('Visible', 'off');
-            app.UIFigure.Position = [100 100 640 480];
+            app.UIFigure.Position = [100 100 1401 612];
             app.UIFigure.Name = 'MATLAB App';
 
-            % Create ConnectButton
-            app.ConnectButton = uibutton(app.UIFigure, 'push');
-            app.ConnectButton.ButtonPushedFcn = createCallbackFcn(app, @ConnectButtonPushed, true);
-            app.ConnectButton.Position = [249 346 100 22];
-            app.ConnectButton.Text = 'Connect';
+            % Create XYinputimagePanel
+            app.XYinputimagePanel = uipanel(app.UIFigure);
+            app.XYinputimagePanel.Title = 'X&Y input image';
+            app.XYinputimagePanel.Position = [898 306 373 307];
 
-            % Create MessageFieldEditFieldLabel
-            app.MessageFieldEditFieldLabel = uilabel(app.UIFigure);
-            app.MessageFieldEditFieldLabel.HorizontalAlignment = 'right';
-            app.MessageFieldEditFieldLabel.Position = [189 304 80 22];
-            app.MessageFieldEditFieldLabel.Text = 'MessageField';
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.XYinputimagePanel);
+            title(app.UIAxes, 'Input Map')
+            xlabel(app.UIAxes, 'X')
+            ylabel(app.UIAxes, 'Y')
+            zlabel(app.UIAxes, 'Z')
+            app.UIAxes.XLim = [0 25];
+            app.UIAxes.YLim = [0 75];
+            app.UIAxes.Position = [116 2 141 242];
 
-            % Create MessageFieldEditField
-            app.MessageFieldEditField = uieditfield(app.UIFigure, 'text');
-            app.MessageFieldEditField.Position = [284 304 100 22];
+            % Create ImageinputButton
+            app.ImageinputButton = uibutton(app.XYinputimagePanel, 'push');
+            app.ImageinputButton.ButtonPushedFcn = createCallbackFcn(app, @ImageinputButtonPushed, true);
+            app.ImageinputButton.Position = [137 260 100 22];
+            app.ImageinputButton.Text = 'Image input';
 
-            % Create SendButton
-            app.SendButton = uibutton(app.UIFigure, 'push');
-            app.SendButton.ButtonPushedFcn = createCallbackFcn(app, @SendButtonPushed, true);
-            app.SendButton.Position = [249 258 100 22];
-            app.SendButton.Text = 'Send';
+            % Create XYManualInputPanel
+            app.XYManualInputPanel = uipanel(app.UIFigure);
+            app.XYManualInputPanel.Title = 'X&Y Manual Input';
+            app.XYManualInputPanel.Position = [527 306 372 307];
 
-            % Create OutputAreaTextAreaLabel
-            app.OutputAreaTextAreaLabel = uilabel(app.UIFigure);
-            app.OutputAreaTextAreaLabel.HorizontalAlignment = 'right';
-            app.OutputAreaTextAreaLabel.Position = [166 203 66 22];
-            app.OutputAreaTextAreaLabel.Text = 'OutputArea';
+            % Create UIAxes_2
+            app.UIAxes_2 = uiaxes(app.XYManualInputPanel);
+            title(app.UIAxes_2, 'Manual Map')
+            xlabel(app.UIAxes_2, 'X')
+            ylabel(app.UIAxes_2, 'Y')
+            zlabel(app.UIAxes_2, 'Z')
+            app.UIAxes_2.XLim = [0 25];
+            app.UIAxes_2.YLim = [0 75];
+            app.UIAxes_2.Position = [103 1 141 242];
 
-            % Create OutputAreaTextArea
-            app.OutputAreaTextArea = uitextarea(app.UIFigure);
-            app.OutputAreaTextArea.Position = [247 167 150 60];
+            % Create DrawMapButton
+            app.DrawMapButton = uibutton(app.XYManualInputPanel, 'push');
+            app.DrawMapButton.ButtonPushedFcn = createCallbackFcn(app, @DrawMapButtonPushed, true);
+            app.DrawMapButton.Position = [124 259 100 22];
+            app.DrawMapButton.Text = 'Draw Map';
+
+            % Create SourceSwitchLabel
+            app.SourceSwitchLabel = uilabel(app.UIFigure);
+            app.SourceSwitchLabel.HorizontalAlignment = 'center';
+            app.SourceSwitchLabel.Position = [675 150 82 22];
+            app.SourceSwitchLabel.Text = 'Source Switch';
+
+            % Create SourceSwitch
+            app.SourceSwitch = uiswitch(app.UIFigure, 'slider');
+            app.SourceSwitch.Items = {'Hand Drawn', 'Image Input'};
+            app.SourceSwitch.ValueChangedFcn = createCallbackFcn(app, @SourceSwitchValueChanged, true);
+            app.SourceSwitch.Position = [693 187 45 20];
+            app.SourceSwitch.Value = 'Hand Drawn';
+
+            % Create LazySuasanPanel
+            app.LazySuasanPanel = uipanel(app.UIFigure);
+            app.LazySuasanPanel.Title = 'Lazy Suasan';
+            app.LazySuasanPanel.Position = [268 306 260 307];
+
+            % Create UIAxes3
+            app.UIAxes3 = uiaxes(app.LazySuasanPanel);
+            title(app.UIAxes3, 'Title')
+            xlabel(app.UIAxes3, 'X')
+            ylabel(app.UIAxes3, 'Y')
+            zlabel(app.UIAxes3, 'Z')
+            app.UIAxes3.Position = [17 1 224 185];
+
+            % Create NumberofBeakersSpinnerLabel
+            app.NumberofBeakersSpinnerLabel = uilabel(app.LazySuasanPanel);
+            app.NumberofBeakersSpinnerLabel.HorizontalAlignment = 'right';
+            app.NumberofBeakersSpinnerLabel.Position = [18 243 108 22];
+            app.NumberofBeakersSpinnerLabel.Text = 'Number of Beakers';
+
+            % Create NumberofBeakersSpinner
+            app.NumberofBeakersSpinner = uispinner(app.LazySuasanPanel);
+            app.NumberofBeakersSpinner.Limits = [3 8];
+            app.NumberofBeakersSpinner.ValueChangedFcn = createCallbackFcn(app, @NumberofBeakersSpinnerValueChanged, true);
+            app.NumberofBeakersSpinner.Position = [141 243 100 22];
+            app.NumberofBeakersSpinner.Value = 3;
+
+            % Create ClabrationandstartPanel
+            app.ClabrationandstartPanel = uipanel(app.UIFigure);
+            app.ClabrationandstartPanel.Title = 'Clabration and start';
+            app.ClabrationandstartPanel.Position = [528 216 371 90];
+
+            % Create CalabrationLampLabel
+            app.CalabrationLampLabel = uilabel(app.ClabrationandstartPanel);
+            app.CalabrationLampLabel.HorizontalAlignment = 'right';
+            app.CalabrationLampLabel.Position = [13 23 66 22];
+            app.CalabrationLampLabel.Text = 'Calabration';
+
+            % Create CalabrationLamp
+            app.CalabrationLamp = uilamp(app.ClabrationandstartPanel);
+            app.CalabrationLamp.Position = [94 23 20 20];
+            app.CalabrationLamp.Color = [1 0 0];
+
+            % Create StartButton
+            app.StartButton = uibutton(app.ClabrationandstartPanel, 'push');
+            app.StartButton.ButtonPushedFcn = createCallbackFcn(app, @StartButtonPushed, true);
+            app.StartButton.Position = [136 22 100 22];
+            app.StartButton.Text = 'Start';
+
+            % Create TestswitchSwitchLabel
+            app.TestswitchSwitchLabel = uilabel(app.ClabrationandstartPanel);
+            app.TestswitchSwitchLabel.HorizontalAlignment = 'center';
+            app.TestswitchSwitchLabel.Position = [264 5 64 22];
+            app.TestswitchSwitchLabel.Text = 'Test switch';
+
+            % Create TestswitchSwitch
+            app.TestswitchSwitch = uiswitch(app.ClabrationandstartPanel, 'slider');
+            app.TestswitchSwitch.ValueChangedFcn = createCallbackFcn(app, @TestswitchSwitchValueChanged, true);
+            app.TestswitchSwitch.Position = [273 42 45 20];
+
+            % Create FiltersfixedPanel
+            app.FiltersfixedPanel = uipanel(app.UIFigure);
+            app.FiltersfixedPanel.Title = 'Filters fixed';
+            app.FiltersfixedPanel.Position = [268 78 260 229];
+
+            % Create FixedchoosesButtonGroup
+            app.FixedchoosesButtonGroup = uibuttongroup(app.FiltersfixedPanel);
+            app.FixedchoosesButtonGroup.Title = 'Fixed chooses';
+            app.FixedchoosesButtonGroup.Position = [67 36 123 114];
+
+            % Create Button
+            app.Button = uiradiobutton(app.FixedchoosesButtonGroup);
+            app.Button.Text = '1';
+            app.Button.Position = [11 68 58 22];
+            app.Button.Value = true;
+
+            % Create Button_2
+            app.Button_2 = uiradiobutton(app.FixedchoosesButtonGroup);
+            app.Button_2.Text = '2';
+            app.Button_2.Position = [11 46 65 22];
+
+            % Create Button_3
+            app.Button_3 = uiradiobutton(app.FixedchoosesButtonGroup);
+            app.Button_3.Text = '3';
+            app.Button_3.Position = [11 24 65 22];
+
+            % Create Button_4
+            app.Button_4 = uiradiobutton(app.FixedchoosesButtonGroup);
+            app.Button_4.Text = '4';
+            app.Button_4.Position = [11 3 65 22];
+
+            % Create FiltersGradientPanel
+            app.FiltersGradientPanel = uipanel(app.UIFigure);
+            app.FiltersGradientPanel.Title = 'Filters Gradient';
+            app.FiltersGradientPanel.Position = [898 76 373 229];
+
+            % Create GradientFilterEditFieldLabel
+            app.GradientFilterEditFieldLabel = uilabel(app.FiltersGradientPanel);
+            app.GradientFilterEditFieldLabel.HorizontalAlignment = 'right';
+            app.GradientFilterEditFieldLabel.Position = [76 118 81 22];
+            app.GradientFilterEditFieldLabel.Text = 'Gradient Filter';
+
+            % Create GradientFilterEditField
+            app.GradientFilterEditField = uieditfield(app.FiltersGradientPanel, 'numeric');
+            app.GradientFilterEditField.Limits = [0 100];
+            app.GradientFilterEditField.ValueDisplayFormat = '%.1f';
+            app.GradientFilterEditField.Position = [172 118 100 22];
+
+            % Create FilterchoosesSwitchLabel
+            app.FilterchoosesSwitchLabel = uilabel(app.UIFigure);
+            app.FilterchoosesSwitchLabel.HorizontalAlignment = 'center';
+            app.FilterchoosesSwitchLabel.Position = [675 78 80 22];
+            app.FilterchoosesSwitchLabel.Text = 'Filter chooses';
+
+            % Create FilterchoosesSwitch
+            app.FilterchoosesSwitch = uiswitch(app.UIFigure, 'slider');
+            app.FilterchoosesSwitch.Items = {'Fixed', 'Gradient'};
+            app.FilterchoosesSwitch.ValueChangedFcn = createCallbackFcn(app, @FilterchoosesSwitchValueChanged, true);
+            app.FilterchoosesSwitch.Position = [692 115 45 20];
+            app.FilterchoosesSwitch.Value = 'Fixed';
 
             % Show the figure after all components are created
             app.UIFigure.Visible = 'on';
@@ -116,13 +722,16 @@ classdef Test1ARD < matlab.apps.AppBase
     methods (Access = public)
 
         % Construct app
-        function app = Test1ARD
+        function app = Guione
 
             % Create UIFigure and components
             createComponents(app)
 
             % Register the app with App Designer
             registerApp(app, app.UIFigure)
+
+            % Execute the startup function
+            runStartupFcn(app, @startupFcn)
 
             if nargout == 0
                 clear app
