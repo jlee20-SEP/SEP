@@ -38,6 +38,52 @@ end
 % 
 % writeDigitalPin(a, 'D13', 1)
 
+%%2/18/26 Unfinished Code For IMU%%
+
+%%NEW CODE (Attribute Dr. Davila)%%
+clear a
+a = arduino('COM8', 'Uno');
+r=0;
+while r==0
+    clear a
+    a = arduino;                  %Arduino is startup
+    z = readVoltage(a, 'A2');     % Read from analog pin A3.
+    y = readVoltage(a, 'A4');     % Read from analog pin A4.   
+    x = readVoltage(a, 'A5');     % Read from analog pin A5.
+    pause(0.5);  % Small delay for stability in readings
+    x1 = readVoltage(a, 'A5');
+    y1 = readVoltage(a, 'A4');
+    %z1 = readVoltage(a, 'A5');
+
+    x2 = x1 + 0.01;
+    y2 = y1 +0.05;
+   % z2 = z1 + 0.07;
+
+    if 1.55 < x > 1.63
+        fprintf("The laser has moved in the X-direction, stopping system");
+        break
+    end
+
+    if y > 1.55
+        fprintf("The laser has moved in the Y-direction, stopping system");
+        break
+    end
+   % if z > z2
+       % fprintf("The laser has moved in the Z-direction, stopping system");
+      %  break
+    %end
+    writeDigitalPin(a, 'D13', 1)
+    fprintf('x-position: %.2fV\n',x);
+    fprintf('y-position: %.2fV\n',y);
+    fprintf('z-position: %.2fV\n', z);
+         
+end
+% a = arduino;                  %Arduino is startup
+% z = readVoltage(a, 'A2');     % Read from analog pin A3.
+% y = readVoltage(a, 'A4');     % Read from analog pin A4.   
+% x = readVoltage(a, 'A5');     % Read from analog pin A5.
+% 
+% writeDigitalPin(a, 'D13', 1)
 
 %%NEW CODE FOR PHOTORESISTOR%%
 
