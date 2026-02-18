@@ -44,6 +44,8 @@ end
 clear a
 a = arduino('COM8', 'Uno');
 r=0;
+minx = 1.55;
+maxx = 1.63;
 while r==0
     clear a
     a = arduino;                  %Arduino is startup
@@ -59,11 +61,14 @@ while r==0
     y2 = y1 +0.05;
    % z2 = z1 + 0.07;
 
-    if 1.55 < x > 1.63
+    if x < minx
         fprintf("The laser has moved in the X-direction, stopping system");
         break
     end
-
+    if x > maxx
+        fprintf("The laser has moved in the X-direction, stopping system");
+        break
+    end
     if y > 1.55
         fprintf("The laser has moved in the Y-direction, stopping system");
         break
