@@ -1,35 +1,81 @@
+clc
+
+import zaber.motion.ascii.Connection;
+import zaber.motion.Units;
 clear a
 clear s
+a = arduino("COM9", "Uno", "Libraries", "Servo");
+s = servo(a, "D7", "MinPulseDuration", 1e-3,"MaxPulseDuration", 2e-3);
 
-a = arduino("COM5", "Uno", "Libraries", "Servo");
-s = servo(a, "D9", "MinPulseDuration", 1e-3, "MaxPulseDuration", 2e-3);
+writePosition(s, 1);
 
-writePosition(s, 0);
-pause(0.8);
-writePosition(s, 1);
-pause(0.8);
-writePosition(s, 0);
-pause(0.8);
-writePosition(s, 1);
-pause(0.8);
-writePosition(s, 0);
-pause(0.8);
-writePosition(s, 1);
-pause(0.8);
-writePosition(s, 0);
-pause(0.8);
-writePosition(s, 1);
-pause(0.8);
-writePosition(s, 0);
-pause(0.8);
-writePosition(s, 1);
-pause(0.8);
-writePosition(s, 0);
-pause(0.8);
-writePosition(s, 1);
-pause(0.8);
-writePosition(s, 0);
-pause(0.8);
-writePosition(s, 1);
-pause(0.8);
-writePosition(s, 0);
+if exist('connection','var')
+    try
+        connection.close();
+    catch
+    end
+    clear connection
+end
+%========================================================================================================
+connection = Connection.openSerialPort('COM8');                                %establishes connection
+try
+    connection.enableAlerts();
+
+    deviceList = connection.detectDevices();                                   %Finds devices
+    fprintf('Found %d devices.\n', deviceList.length);
+
+    MotorY = deviceList(2);                                                    %designates Motor Y
+   
+    axisY = MotorY.getAxis(1);
+    axisY.getSettings().set('maxspeed', 10, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+
+    if ~axisY.isHomed()
+        axisY.home();
+    end
+
+    MotorX = deviceList(1);                                                    %designates Motor X
+
+    axisX = MotorX.getAxis(1);
+    axisX.getSettings().set('maxspeed', 10, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+    if ~axisX.isHomed()
+        axisX.home();
+    end
+
+    upPos = 0;                                                                %Presets the up position for the Y motor
+    slidecenter = [75, 100];                                                  %Presets the slide center position for etching
+    GAPSPEED = 10;                                                            %sets the base speed
+                                                                              %Sets the speed for etching between points
+    axisX.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);         %sets the speed for the motors
+    axisY.getSettings().set('maxspeed', GAPSPEED, Units.VELOCITY_MILLIMETRES_PER_SECOND);
+
+    axisX.moveAbsolute(slidecenter(1), Units.LENGTH_MILLIMETRES);             %Moves the motors to the center position
+    axisY.moveAbsolute(slidecenter(2), Units.LENGTH_MILLIMETRES);
+
+    axisX.waitUntilIdle();                                                    %Waits until the motors are done moving to continue
+    axisY.waitUntilIdle();
+%==================================================================================================================
+    x = 0.75;      % pause time
+    startPos = 0; % original position
+    endPos   = 1; % opposite extreme
+    numspins = input('Please type the desired number of spins: ');
+    % Move to original position
+    for i = 1:numspins
+        writePosition(s, startPos);
+        pause(x);
+        writePosition(s, endPos);
+        pause(x);
+    end
+
+    pause(5)
+    fprintf('Moving to Up Position.');
+
+    axisY.moveAbsolute(upPos, Units.LENGTH_MILLIMETRES);
+%%================================================Closes the connection=============================================================================
+
+    connection.close();                                   %This closes the connection
+catch exception
+    connection.close();
+    rethrow(exception);
+end
+
+fprintf('Connection closed, rinse complete.');
