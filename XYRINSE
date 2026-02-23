@@ -1,14 +1,20 @@
+% Daniel DuBose
+% FEB 23
+% Zaber motor Integration with Servo
+%__________________________________________________________________________
+%::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+%========================INITIALIZING CONNECTIONS==========================
 clc
-
 import zaber.motion.ascii.Connection;
 import zaber.motion.Units;
 clear a
 clear s
-a = arduino("COM9", "Uno", "Libraries", "Servo");
-s = servo(a, "D7", "MinPulseDuration", 1e-3,"MaxPulseDuration", 2e-3);
+a = arduino("COM9", "Uno", "Libraries", "Servo");          %Connects to Arduino
+s = servo(a, "D7", "MinPulseDuration", 1e-3,"MaxPulseDuration", 2e-3);  %Specifies Pin Setup
 
 writePosition(s, 1);
 
+%========================THIS ENSURES COM PORT IS AVALIABLE FOR USE, AND CLEARS ANY PREVIOUS CONNECTIONS==========================
 if exist('connection','var')
     try
         connection.close();
@@ -16,8 +22,11 @@ if exist('connection','var')
     end
     clear connection
 end
-%========================================================================================================
-connection = Connection.openSerialPort('COM8');                                %establishes connection
+
+%============================CONNECTS TO ZABER MOTORs=======================================
+connection = Connection.openSerialPort('COM8');  %establishes connection
+
+%========================DESIGNATES AND HOMES ZABER MOTORS==========================
 try
     connection.enableAlerts();
 
@@ -38,9 +47,10 @@ try
     axisX = MotorX.getAxis(1);
     axisX.getSettings().set('maxspeed', 10, Units.VELOCITY_MILLIMETRES_PER_SECOND);
     if ~axisX.isHomed()
-        axisX.home();
+        axisX.home
     end
 
+%========================SETS UP MOTOR CENTER POSITION, UP POSITION, AND MAX SPEED==========================
     upPos = 0;                                                                %Presets the up position for the Y motor
     slidecenter = [75, 100];                                                  %Presets the slide center position for etching
     GAPSPEED = 10;                                                            %sets the base speed
@@ -53,12 +63,14 @@ try
 
     axisX.waitUntilIdle();                                                    %Waits until the motors are done moving to continue
     axisY.waitUntilIdle();
-%==================================================================================================================
+
+%==================================SETS VALUES FOR MG996R SERVO POSITIONS AND TIME BETWEEN MOVEMENTS========================================
     x = 0.75;      % pause time
     startPos = 0; % original position
     endPos   = 1; % opposite extreme
-    numspins = input('Please type the desired number of spins: ');
-    % Move to original position
+    numspins = input('Please type the desired number of spins: ');          %The user can specify the number of times the servo spins
+
+%========================THIS LOOP SPINS THE SERVO BACK AND FORTH FROM 0 AND 180 DEGREES==========================
     for i = 1:numspins
         writePosition(s, startPos);
         pause(x);
@@ -66,12 +78,13 @@ try
         pause(x);
     end
 
+%========================THIS RESETS THE ZABER MOTOR POSITION, AND ENSURES THE SLIDE IS NO LONGER IN THE BEAKER==========================
     pause(5)
     fprintf('Moving to Up Position.');
 
     axisY.moveAbsolute(upPos, Units.LENGTH_MILLIMETRES);
-%%================================================Closes the connection=============================================================================
 
+%%===========Closes the connection=========================================
     connection.close();                                   %This closes the connection
 catch exception
     connection.close();
