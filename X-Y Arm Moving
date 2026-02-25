@@ -9,6 +9,13 @@ clc;
 import zaber.motion.ascii.Connection;
 import zaber.motion.Units;
 
+%========================ENSURES SERVO IS CENTERED BEFORE ETCH=============
+clear a
+clear s
+a = arduino("COM5", "Uno", "Libraries", "Servo");          %Connects to Arduino
+s = servo(a, "D7", "MinPulseDuration", 1e-3,"MaxPulseDuration", 2e-3);  %Specifies Pin Setup
+writePosition(s, 1);
+
 %======Ensures COM Port is closed and ready for use if previous operation cancelled==============
 if exist('connection','var')
     try
