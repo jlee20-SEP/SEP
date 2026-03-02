@@ -92,51 +92,56 @@ end
 
 %%NEW CODE FOR PHOTORESISTOR%%
 
-%%NEW CODE FOR PHOTORESISTOR%%
+%%NEW CODE FOR PHOTORESISTOR 3/2/26%%
 clear a
 a = arduino('COM8', 'Uno');
-max_iterations = 10;
+GUI_simulation = 0;
 break_cycle = 5;
-
+counter = 0;
 disp('Reading Voltages from A5');
 try
     while true
-        voltage = readVoltage(a,'A5');
-        fprintf('Voltage: %.2f V\n', voltage);
         pause(0.5);
-        voltage2 = readVoltage(a,'A4');
+        voltage = readVoltage(a,'A0');
         if voltage > 3
-            for i = 1:max_iterations
-                pause(1);
-
-            fprintf('The laser is centered');
-            fprintf('Voltage: %.2f V\n', voltage);
-            
+            pause(1)
+            counter = counter + 1;
+            fprintf('\n');
+            fprintf('Laser is centered, wait 5 seconds to verify');
+            pause(1)
+            if counter >= break_cycle
+                fprintf('\n')
+                disp('Laser is centered');
+                GUI_simulation = GUI_simulation + 1;
+                disp(GUI_simulation)
+                break
             end
-            break
-            
+                                    
+        end                                                                    
         end
+        voltage2 = readVoltage(a,'A1');
         if voltage2 > 3
-            fprintf('Move laser Left, too far right');
+            fprintf('Move laser down, too far up. \n');
         end
         pause(0.5);
         voltage3 = readVoltage(a,'A3');
         if voltage3 > 3
-            fprintf('Move laser right, too far left');
+            fprintf('Move laser up, too far down');
         end
         pause(0.5);
-        voltage4 = readVoltage(a,'A2');
+        voltage4 = readVoltage(a ...
+            ,'A4');
         if voltage4 > 3
-            fprintf('Move Laser Up, too far down');
+            fprintf('Move Laser right, too far left');
         end
         pause(0.5);
-        voltage5 = readVoltage(a,'A1');
+        voltage5 = readVoltage(a,'A5');
         if voltage5 > 3
-            fprintf('Move Laser Down, too far up');
+            fprintf('Move Laser left, too far right');
         end
         pause(0.5);
     end
-catch ME
+
     disp('Voltage reading stopped.');
     delete(a);
     rethrow(ME);
