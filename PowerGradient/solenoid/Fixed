@@ -1,0 +1,24 @@
+a = arduino("COM5", 'Mega2560', 'Libraries', 'Servo'); % initialize arduino instnace with servo library
+s = servo(a, 'D5', 'MinPulseDuration', 1e-3, 'MaxPulseDuration', 2e-3); % initialize servo 
+
+k = 1 %solenoid test value
+writeDigitalPin(a, "D6", k)
+writePosition(s , 0.8)
+
+pos = 3; % enter 1 of four fixed postions
+fixed = oneoffour(pos); % cals oneoffour function
+pause(2)
+writePosition(s, fixed)
+
+
+function fixed4 = oneoffour(n) % oneoffour function
+    if n == 1 % when postion 1 is entered 
+        fixed4 = 0.7;
+    elseif n == 2 % when postion 2 is entered 
+        fixed4 = 0.5;
+    elseif n == 3 % when postion 3 is entered 
+        fixed4 = 0.3;
+    else % when postion 4 is entered 
+        fixed4 = 0.1;
+    end
+end
