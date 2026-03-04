@@ -40,56 +40,38 @@ end
 
 %%2/18/26 Unfinished Code For IMU%%
 
-%%NEW CODE (Attribute Dr. Davila)%%
-clear a
-a = arduino('COM8', 'Uno');
-r=0;
-minx = 1.55;
-maxx = 1.63;
-while r==0
-    clear a
-    a = arduino;                  %Arduino is startup
-    z = readVoltage(a, 'A2');     % Read from analog pin A3.
-    y = readVoltage(a, 'A4');     % Read from analog pin A4.   
-    x = readVoltage(a, 'A5');     % Read from analog pin A5.
-    pause(0.5);  % Small delay for stability in readings
-    x1 = readVoltage(a, 'A5');
-    y1 = readVoltage(a, 'A4');
-    %z1 = readVoltage(a, 'A5');
+% 1. Create arduino object
+clear all
+a = arduino('COM9', 'Uno'); % Replace 'COM3' with your port
 
-    x2 = x1 + 0.01;
-    y2 = y1 +0.05;
-   % z2 = z1 + 0.07;
+% 2. Initialize threshold (adjust based on noise/needs)
+threshold = 1.4; % G-force difference from rest
 
-    if x < minx
-        fprintf("The laser has moved in the X-direction, stopping system");
-        break
+% 3. Main Loop to Monitor Motion
+while true
+    % Read analog values (0 to 5V)
+    vx = readVoltage(a, 'A0');
+    vy = readVoltage(a, 'A1');
+    vz = readVoltage(a, 'A2');
+
+    % 4. Convert Voltage to Acceleration (g)
+    % Assuming 3.3V=0g, ~330mV/g sensitivity
+    accX = (vx - 1.65) / 0.33;
+    accY = (vy - 1.65) / 0.33;
+    accZ = (vz - 1.65) / 0.33;
+
+    % Calculate total acceleration vector
+    totalAcc = sqrt(accX^2 + accY^2 + accZ^2);
+
+    % 5. Motion Detection Logic
+    if abs(totalAcc - 1) > threshold % 1G is gravity at rest
+        disp('Motion Detected! Stopping System...');
+        % Add code here to turn off motors/stop processes
+        break; % Exit loop
     end
-    if x > maxx
-        fprintf("The laser has moved in the X-direction, stopping system");
-        break
-    end
-    if y > 1.55
-        fprintf("The laser has moved in the Y-direction, stopping system");
-        break
-    end
-   % if z > z2
-       % fprintf("The laser has moved in the Z-direction, stopping system");
-      %  break
-    %end
-    writeDigitalPin(a, 'D13', 1)
-    fprintf('x-position: %.2fV\n',x);
-    fprintf('y-position: %.2fV\n',y);
-    fprintf('z-position: %.2fV\n', z);
-         
+    
+    pause(0.1); % Sample rate
 end
-% a = arduino;                  %Arduino is startup
-% z = readVoltage(a, 'A2');     % Read from analog pin A3.
-% y = readVoltage(a, 'A4');     % Read from analog pin A4.   
-% x = readVoltage(a, 'A5');     % Read from analog pin A5.
-% 
-% writeDigitalPin(a, 'D13', 1)
-
 %%NEW CODE FOR PHOTORESISTOR%%
 
 %%NEW CODE FOR PHOTORESISTOR 3/2/26%%
