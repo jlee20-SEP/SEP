@@ -1,0 +1,43 @@
+clear a % clears all arduino instances
+clear s % clears all servo instnaces
+a = arduino("COM5", 'Mega2560', 'Libraries', 'Servo'); % initialize arduino instnace with servo library
+s = servo(a, 'D5', 'MinPulseDuration', 1e-3, 'MaxPulseDuration', 2e-3); % initialize servo 
+
+k = 1 %solenoid test value
+writeDigitalPin(a, "D6", k)
+writePosition(s , 0.8)
+
+Power = 70; % enter percentage output power
+
+pause (1) % delay 1 second
+
+Grad = percent(Power) % calls percent function
+writePosition(s , Grad)
+
+pause(10) % delay 5 seconds
+
+
+k = 1 %solenoid test value
+writeDigitalPin(a, "D4", k)
+pause(2)
+k = 0 %solenoid test value
+writeDigitalPin(a, "D4", k)
+k = 0 %solenoid test value
+pause(3)
+writeDigitalPin(a, "D6", k)
+pause(5)
+
+
+function outP = percent(n) % percent function 
+    x = n;
+    if n >= 50
+        outP = 0.001*x + 0.64
+    else
+        outP = 0.1352*log(x)+.1609
+    end
+    %outP = (-0.0000000638291470282266)*(x^4) + (0.0000155406692715816)*(x^3) +(-0.00131996667450557)*(x^2) + (0.0470518358126796)*x + (0.0989719351729596);
+     % enters input percentage and returns corrolating servo postion
+    %writePosition( s1, a2); % writes servo to above percentage power 
+end
+
+

@@ -1,8 +1,0 @@
-***This is code for testing if the relay can be controlled through a limit switch***
-
-clear a 
-clear s
-a = arduino("COM8", 'Uno', 'Libraries', 'Servo');
-s = servo(a, 'D4', 'MinPulseDuration', 1e-3, 'MaxPulseDuration', 2e-3);
- 
-writePosition(s, 0);
