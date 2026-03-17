@@ -1,77 +1,34 @@
-clear a
-a = arduino;                  %Arduino is startup
-z = readVoltage(a, 'A3');     % Read from analog pin A3.
-y = readVoltage(a, 'A4');     % Read from analog pin A4.   
-x = readVoltage(a, 'A5');     % Read from analog pin A5.
-
-writeDigitalPin(a, 'D13', 1)
-clear device ;
-disp(x);
-disp(y);
-disp(z);
-clear(x);
-clear(y);
-clear(z);
-
-
-
-%%NEW CODE (Attribute Dr. Davila)%%
-
-
-r=0;
-while r==0
-    clear a
-    a = arduino;                  %Arduino is startup
-    z = readVoltage(a, 'A2');     % Read from analog pin A3.
-    y = readVoltage(a, 'A4');     % Read from analog pin A4.   
-    x = readVoltage(a, 'A5');     % Read from analog pin A5.
+%Photoresistor Code
+%Opens port for Arduino Mega
+    clear all
+    a = arduino('COM4', 'Mega2560'); %Change COM4 later for permanent computer
+    %Threshold for sensitivity you want the IMU
+    threshold = .3; % Higher decreases sens, and lower increases sens
     
-    writeDigitalPin(a, 'D13', 1)
-    disp(x);
-    disp(y);
-    disp(z);
-end
-% a = arduino;                  %Arduino is startup
-% z = readVoltage(a, 'A2');     % Read from analog pin A3.
-% y = readVoltage(a, 'A4');     % Read from analog pin A4.   
-% x = readVoltage(a, 'A5');     % Read from analog pin A5.
-% 
-% writeDigitalPin(a, 'D13', 1)
-
-%%2/18/26 Unfinished Code For IMU%%
-
-% 1. Create arduino object
-clear all
-a = arduino('COM9', 'Uno'); % Replace 'COM3' with your port
-
-% 2. Initialize threshold (adjust based on noise/needs)
-threshold = 1.4; % G-force difference from rest
-
-% 3. Main Loop to Monitor Motion
-while true
-    % Read analog values (0 to 5V)
-    vx = readVoltage(a, 'A0');
-    vy = readVoltage(a, 'A1');
-    vz = readVoltage(a, 'A2');
-
-    % 4. Convert Voltage to Acceleration (g)
-    % Assuming 3.3V=0g, ~330mV/g sensitivity
-    accX = (vx - 1.65) / 0.33;
-    accY = (vy - 1.65) / 0.33;
-    accZ = (vz - 1.65) / 0.33;
-
-    % Calculate total acceleration vector
-    totalAcc = sqrt(accX^2 + accY^2 + accZ^2);
-
-    % 5. Motion Detection Logic
-    if abs(totalAcc - 1) > threshold % 1G is gravity at rest
-        disp('Motion Detected! Stopping System...');
-        % Add code here to turn off motors/stop processes
-        break; % Exit loop
+    while true
+        % Reads values from respective pins
+        vx = readVoltage(a, 'A15');
+        vy = readVoltage(a, 'A14');
+        vz = readVoltage(a, 'A13');
+    
+        %Converts position to motion reader
+        accX = (vx - 1.65) / 0.33;
+        accY = (vy - 1.65) / 0.33;
+        accZ = (vz - 1.65) / 0.33;
+    
+        % Converts motion to acceleration
+        totalAcc = sqrt(accX^2 + accY^2 + accZ^2);
+    
+        if abs(totalAcc - 1) > threshold 
+            disp('Motion Detected! Stopping System. Calling emergency stop function');
+           
+            break;
+        end
+        
+        pause(0.1); % Sampling rate for movement
     end
-    
-    pause(0.1); % Sample rate
-end
+
+
 %%NEW CODE FOR PHOTORESISTOR%%
 
 %%NEW CODE FOR PHOTORESISTOR 3/2/26%%
